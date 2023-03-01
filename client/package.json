@@ -4,7 +4,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "homepage": "https://github.com/wage-run/wshttp/client",
+  "homepage": "https://github.com/wage-run/wshttp/tree/main/client",
   "repository": {
     "type": "git",
     "url": "https://github.com/wage-run/wshttp"
