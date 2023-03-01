@@ -1,6 +1,6 @@
 {
-  "name": "@shynome/wshttp",
-  "version": "0.0.7",
+  "name": "@wage/wshttp",
+  "version": "0.0.1",
   "publishConfig": {
     "access": "public"
   },
