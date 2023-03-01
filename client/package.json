@@ -1,0 +1,26 @@
+{
+  "name": "@shynome/wshttp",
+  "version": "0.0.7",
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/wage-run/wshttp/client",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wage-run/wshttp"
+  },
+  "description": "",
+  "main": "index.js",
+  "browser": "wasm_exec_tinygo_browser.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "prepack": "make prepack",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "websocket": "^1.0.34"
+  }
+}

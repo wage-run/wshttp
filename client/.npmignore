@@ -1,0 +1,5 @@
+*
+!wshttp.wasm
+!wshttp-go.wasm
+!*.js
+!index.d.ts
