@@ -17,32 +17,57 @@ import (
 )
 
 func main() {
-	var ep = js.Global().Get("WageEndpoint").String()
-	var GoFetchExportName = "GoFetch"
-	if v := js.Global().Get("WageFetchExport"); v.Type() == js.TypeString {
-		GoFetchExportName = v.String()
-	}
-	js.Global().Set(GoFetchExportName, GoFetch(ep))
+	js.Global().Set("wshttpGen", js.FuncOf(wshttpGen))
 	<-make(chan any)
 }
 
-func getJsMaxRetry() int {
-	if re := js.Global().Get("WageMaxRetry"); re.Type() == js.TypeNumber {
-		return re.Int()
-	} else {
-		return 10
-	}
+var defaultConfig js.Value
+
+func init() {
+	c := js.Global().Get("Object").New()
+	c.Set("max_retry", 10)
+	defaultConfig = c
 }
 
-func GoFetch(endpoint string) js.Func {
-
-	if endpoint == "" {
-		panic("env Endpoint is not set")
+func ifValDo(val js.Value, fn func(js.Value)) {
+	if val.IsUndefined() {
+		return
 	}
+	fn(val)
+}
+
+func wshttpGen(this js.Value, args []js.Value) any {
+	endpoint := args[0].String()
+	if endpoint == "" {
+		panic("endpoint is not set")
+	}
+	config := js.Global().Get("Object").New()
+	iconfig := js.Undefined()
+	if len(args) == 2 {
+		iconfig = args[1]
+	}
+	js.Global().Get("Object").Call("assign", config, defaultConfig, iconfig)
+
+	smuxConfig := smux.DefaultConfig()
+	ifValDo(config.Get("Version"), func(v js.Value) { smuxConfig.Version = v.Int() })
+	ifValDo(config.Get("KeepAliveDisabled"), func(v js.Value) { smuxConfig.KeepAliveDisabled = v.Bool() })
+	ifValDo(config.Get("KeepAliveInterval"), func(v js.Value) {
+		if d, err := time.ParseDuration(v.String()); err == nil {
+			smuxConfig.KeepAliveInterval = d
+		}
+	})
+	ifValDo(config.Get("KeepAliveTimeout"), func(v js.Value) {
+		if d, err := time.ParseDuration(v.String()); err == nil {
+			smuxConfig.KeepAliveTimeout = d
+		}
+	})
+	ifValDo(config.Get("MaxFrameSize"), func(v js.Value) { smuxConfig.MaxFrameSize = v.Int() })
+	ifValDo(config.Get("MaxReceiveBuffer"), func(v js.Value) { smuxConfig.MaxReceiveBuffer = v.Int() })
+	ifValDo(config.Get("MaxStreamBuffer"), func(v js.Value) { smuxConfig.MaxStreamBuffer = v.Int() })
 
 	var session *smux.Session
 	var locker = &sync.RWMutex{}
-	var maxRetry = getJsMaxRetry()
+	var maxRetry = config.Get("max_retry").Int()
 	var connect = func() (err error) {
 		ctx := context.Background()
 		conn, _, err := websocket.Dial(ctx, endpoint, nil)
@@ -50,7 +75,7 @@ func GoFetch(endpoint string) js.Func {
 			return
 		}
 		rwc := wshttp.NewWSConn(conn)
-		session, err = smux.Client(rwc, nil)
+		session, err = smux.Client(rwc, smuxConfig)
 		if err != nil {
 			return
 		}
