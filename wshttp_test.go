@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/lainio/err2"
 	"github.com/lainio/err2/assert"
@@ -19,41 +20,9 @@ var l net.Listener
 
 var smuxConfig *smux.Config
 
-func TestMain(m *testing.M) {
-
-	l = try.To1(net.Listen("tcp", "127.0.0.1:0"))
-
-	smuxConfig = smux.DefaultConfig()
-	smuxConfig.Version = 2
-
-	go http.Serve(l, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer err2.Catch(func(err error) {
-			http.Error(w, err.Error(), 500)
-		})
-
-		conn := try.To1(websocket.Accept(w, r, nil))
-		rwc := NewWSConn(conn)
-		rwc.RAddr = TCPAddr(r.RemoteAddr)
-		session := try.To1(smux.Server(rwc, smuxConfig))
-		defer session.Close()
-
-		l := &SmuxListener{Session: session}
-
-		mux := http.NewServeMux()
-		mux.HandleFunc("/hello1", func(w http.ResponseWriter, r *http.Request) {
-			io.WriteString(w, "hello1")
-		})
-		mux.HandleFunc("/hello2", func(w http.ResponseWriter, r *http.Request) {
-			io.WriteString(w, "hello2")
-		})
-
-		try.To(http.Serve(l, mux))
-
-	}))
-	m.Run()
-}
-
 func TestClient(t *testing.T) {
+	go runTestServer(0)
+	time.Sleep(time.Second)
 	ctx := context.Background()
 	conn, _ := try.To2(websocket.Dial(ctx, fmt.Sprintf("ws://%s", l.Addr().String()), nil))
 	rwc := NewWSConn(conn)
@@ -99,4 +68,39 @@ func TestClient(t *testing.T) {
 
 		})
 	}
+}
+
+func runTestServer(port uint16) {
+	l = try.To1(net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port)))
+
+	smuxConfig = smux.DefaultConfig()
+	smuxConfig.Version = 2
+
+	http.Serve(l, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer err2.Catch(func(err error) {
+			http.Error(w, err.Error(), 500)
+		})
+
+		conn := try.To1(websocket.Accept(w, r, nil))
+		rwc := NewWSConn(conn)
+		rwc.RAddr = TCPAddr(r.RemoteAddr)
+		session := try.To1(smux.Server(rwc, smuxConfig))
+		defer session.Close()
+
+		l := &SmuxListener{Session: session}
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("/hello1", func(w http.ResponseWriter, r *http.Request) {
+			io.WriteString(w, "hello1")
+		})
+		mux.HandleFunc("/hello2", func(w http.ResponseWriter, r *http.Request) {
+			io.WriteString(w, "hello2")
+		})
+
+		try.To(http.Serve(l, mux))
+	}))
+}
+
+func TestServer(t *testing.T) {
+	runTestServer(3000)
 }
