@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.0] - 2023-04-04
+
+### Break Change
+
+- 导出 `wshttpGen` 来生成 `fetch` 兼容实例. 这去除大量的环境变量设置
+
 ## [0.0.7] - 2023-03-01
 
 ### Improve
